@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Node + Python Calculator</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px 0;
+        }
+
+        .calculator {
+            width: 350px;
+            background-color: #000;
+            padding: 20px;
+            border-radius: 40px;
+            box-shadow: 0 10px 30px rgba(255, 255, 255, 0.1);
+        }
+
+        /* Display Screen */
+        .display {
+            color: #fff;
+            padding: 20px 10px;
+            text-align: right;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            min-height: 120px;
+            margin-bottom: 10px;
+        }
+
+        .display .expression {
+            font-size: 18px;
+            color: #888;
+            min-height: 25px;
+            margin-bottom: 5px;
+            word-wrap: break-word;
+        }
+
+        .display .result {
+            font-size: 64px;
+            font-weight: 300;
+            line-height: 1;
+        }
+
+        /* Grid Layout */
+        .buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+
+        button {
+            border: none;
+            width: 75px;
+            height: 75px;
+            border-radius: 50%;
+            font-size: 32px;
+            font-weight: 400;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+        }
+
+        button:active {
+            opacity: 0.7;
+        }
+
+        /* Button Colors */
+        button.number {
+            background-color: #333333;
+        }
+
+        button.operator {
+            background-color: #FF9F0A; /* Orange */
+            font-size: 38px;
+        }
+
+        button.clear {
+            background-color: #A5A5A5;
+            color: #000;
+            font-size: 28px;
+        }
+
+        .zero-btn {
+            grid-column: span 2;
+            width: 162px;
+            border-radius: 40px;
+            justify-content: flex-start;
+            padding-left: 28px;
+        }
+
+        /* NEW: History List Panel */
+        .history-panel {
+            margin-top: 20px;
+            border-top: 1px solid #333;
+            padding-top: 15px;
+        }
+        
+        .history-panel h4 {
+            color: #888;
+            margin: 0 0 10px 0;
+            font-size: 12px;
+            font-weight: normal;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .history-list {
+            max-height: 120px;
+            overflow-y: auto;
+            color: #ccc;
+            font-size: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding-right: 5px;
+        }
+
+        /* Custom scrollbar for webkit browsers */
+        .history-list::-webkit-scrollbar {
+            width: 4px;
+        }
+        .history-list::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 10px;
+        }
+
+        .history-item {
+            text-align: right;
+            border-bottom: 1px solid #222;
+            padding-bottom: 4px;
+        }
+
+        .history-item .h-result {
+            color: #FF9F0A;
+            font-weight: bold;
+        }
+
+        .clear-history {
+            background: none;
+            border: none;
+            color: #FF9F0A;
+            font-size: 11px;
+            cursor: pointer;
+            padding: 0;
+            margin-top: 10px;
+            width: auto;
+            height: auto;
+            display: inline;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="calculator">
+        <!-- Display Screen -->
+        <div class="display">
+            <div class="expression" id="expression"></div>
+            <div class="result" id="result">0</div>
+        </div>
+
+        <!-- Buttons Grid -->
+        <div class="buttons">
+            <button class="clear" onclick="clearDisplay()">AC</button>
+            <button class="clear" onclick="appendOperator('negate')">+/-</button>
+            <button class="clear" onclick="appendOperator('modulo')">%</button>
+            <button class="operator" onclick="appendOperator('divide')">÷</button>
+
+            <button class="number" onclick="appendNumber('7')">7</button>
+            <button class="number" onclick="appendNumber('8')">8</button>
+            <button class="number" onclick="appendNumber('9')">9</button>
+            <button class="operator" onclick="appendOperator('multiply')">×</button>
+
+            <button class="number" onclick="appendNumber('4')">4</button>
+            <button class="number" onclick="appendNumber('5')">5</button>
+            <button class="number" onclick="appendNumber('6')">6</button>
+            <button class="operator" onclick="appendOperator('subtract')">−</button>
+
+            <button class="number" onclick="appendNumber('1')">1</button>
+            <button class="number" onclick="appendNumber('2')">2</button>
+            <button class="number" onclick="appendNumber('3')">3</button>
+            <button class="operator" onclick="appendOperator('add')">+</button>
+
+            <button class="number zero-btn" onclick="appendNumber('0')">0</button>
+            <button class="number" onclick="appendNumber('.')">.</button>
+            <button class="operator" onclick="calculate()">=</button>
+            
+            <!-- Extra operations row -->
+            <button class="operator" style="grid-column: span 2; width: 162px; border-radius: 40px; font-size: 20px;" onclick="appendOperator('power')">x^y</button>
+            <button class="operator" style="grid-column: span 2; width: 162px; border-radius: 40px; font-size: 20px;" onclick="appendOperator('square_root')">√x</button>
+        </div>
+
+        <!-- History Panel -->
+        <div class="history-panel">
+            <h4>History <button class="clear-history" onclick="clearHistory()">(Clear)</button></h4>
+            <div class="history-list" id="historyList">
+                <!-- Past calculations will appear here -->
+                <div style="color: #444; font-style: italic;">No calculations yet.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentInput = '';
+        let previousInput = '';
+        let currentOperation = null;
+        let shouldResetInput = false;
+
+        const expressionEl = document.getElementById('expression');
+        const resultEl = document.getElementById('result');
+        const historyListEl = document.getElementById('historyList');
+
+        function appendNumber(num) {
+            if (shouldResetInput) {
+                currentInput = '';
+                shouldResetInput = false;
+            }
+            if (num === '.' && currentInput.includes('.')) return;
+            if (currentInput === '0' && num !== '.') {
+                currentInput = num;
+            } else {
+                currentInput += num;
+            }
+            updateDisplay();
+        }
+
+        function appendOperator(op) {
+            if (op === 'negate') {
+                if(currentInput === '') return;
+                currentInput = (parseFloat(currentInput) * -1).toString();
+                updateDisplay();
+                return;
+            }
+
+            if (currentInput === '' && previousInput === '') return;
+            
+            if (currentInput !== '' && previousInput !== '' && currentOperation !== null) {
+                calculate(); 
+            }
+
+            if (currentInput !== '') {
+                previousInput = currentInput;
+                currentInput = '';
+            }
+            
+            currentOperation = op;
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            if (currentOperation) {
+                const opSymbols = {
+                    'add': '+', 'subtract': '−', 'multiply': '×', 
+                    'divide': '÷', 'modulo': '%', 'power': '^', 'square_root': '√'
+                };
+                expressionEl.textContent = `${previousInput} ${opSymbols[currentOperation] || ''}`;
+            } else {
+                expressionEl.textContent = '';
+            }
+            resultEl.textContent = currentInput || previousInput || '0';
+        }
+
+        function clearDisplay() {
+            currentInput = '';
+            previousInput = '';
+            currentOperation = null;
+            shouldResetInput = false;
+            resultEl.textContent = '0';
+            expressionEl.textContent = '';
+        }
+
+        // NEW: Function to add items to the history panel
+        function addToHistory(num1, operation, num2, result) {
+            // Remove "No calculations yet" if it exists
+            if (historyListEl.innerText.includes('No calculations yet')) {
+                historyListEl.innerHTML = '';
+            }
+
+            const opSymbols = {'add': '+', 'subtract': '−', 'multiply': '×', 'divide': '÷', 'modulo': '%', 'power': '^', 'square_root': '√'};
+            
+            // For square root, we don't show the second number
+            let displayString = '';
+            if (operation === 'square_root') {
+                displayString = `√${num1} = <span class="h-result">${result}</span>`;
+            } else {
+                displayString = `${num1} ${opSymbols[operation] || ''} ${num2} = <span class="h-result">${result}</span>`;
+            }
+
+            const historyItem = document.createElement('div');
+            historyItem.className = 'history-item';
+            historyItem.innerHTML = displayString;
+            
+            // Add to top of the list
+            historyListEl.prepend(historyItem);
+            
+            // Keep history to a reasonable length (e.g., 20 items)
+            if (historyListEl.children.length > 20) {
+                historyListEl.removeChild(historyListEl.lastChild);
+            }
+        }
+
+        function clearHistory() {
+            historyListEl.innerHTML = '<div style="color: #444; font-style: italic;">No calculations yet.</div>';
+        }
+
+        async function calculate() {
+            if (currentOperation === null) return;
+
+            let num1 = parseFloat(previousInput);
+            let num2 = parseFloat(currentInput);
+            
+            if (currentOperation === 'square_root') {
+                num2 = 0; 
+            } else if (isNaN(num1) || isNaN(num2)) {
+                return; 
+            }
+
+            const payload = { num1: num1, num2: num2, operation: currentOperation };
+
+            try {
+                const response = await fetch('/api/calculate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    const result = data.python_result.result;
+                    
+                    // Add to our new visual history panel
+                    addToHistory(previousInput, currentOperation, currentInput, result);
+                    
+                    currentInput = result.toString();
+                    previousInput = '';
+                    currentOperation = null;
+                    shouldResetInput = true;
+                    updateDisplay();
+                } else {
+                    throw new Error(data.error || data.python_result.result);
+                }
+            } catch (error) {
+                // Show error briefly in the display
+                resultEl.textContent = 'Error';
+                setTimeout(() => {
+                    resultEl.textContent = currentInput || '0';
+                }, 1500);
+            }
+        }
+    </script>
+</body>
+</html>
